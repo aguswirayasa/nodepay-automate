@@ -115,8 +115,8 @@ async def render_profile_info(proxy, token):
             return proxy
 
 async def call_api(url, data, proxy, token):
-    parsed_proxies = parse_proxy(proxy)
-    if not parsed_proxies:
+    parsed_proxies = parse_proxy(proxy) if proxy else None
+    if proxy and not parsed_proxies:
         raise ValueError(f"Invalid proxy: {proxy}")
 
     headers = {
@@ -177,18 +177,18 @@ async def ping(proxy, token, account_info):
     try:
         data = {
             "id": account_info.get("uid"),
-            "browser_id": proxy_browser_ids[proxy],
+            "browser_id": proxy_browser_ids.get(proxy, uuidv4()),
             "timestamp": int(time.time()),
-            "version":"2.2.7"
+            "version": "2.2.7"
         }
 
         response = await call_api(DOMAIN_API["PING"], data, proxy, token)
         if response["code"] == 0:
             ip_score = response.get('data', {}).get('ip_score', 'N/A')
-            real_ip = await get_real_ip(proxy)
+            real_ip = await get_real_ip(proxy) if proxy else "N/A"
             log("INFO", 
                 f"Account: {Fore.LIGHTGREEN_EX}{account_info.get('email', 'N/A')}{Style.RESET_ALL} | " + 
-                f"Browser ID: {Fore.LIGHTMAGENTA_EX}{proxy_browser_ids[proxy]}{Style.RESET_ALL} | " +
+                f"Browser ID: {Fore.LIGHTMAGENTA_EX}{proxy_browser_ids.get(proxy, 'N/A')}{Style.RESET_ALL} | " +
                 f"IP: {Fore.LIGHTYELLOW_EX}{real_ip}{Style.RESET_ALL} | " + 
                 f"IP Score: {Fore.LIGHTRED_EX}{ip_score}{Style.RESET_ALL}", 
                 Fore.LIGHTCYAN_EX)
@@ -292,7 +292,9 @@ async def main():
     
     mode_choice = input(Fore.LIGHTYELLOW_EX + "Insert your choice (1/2): ").strip()
     
-    all_proxies = load_proxies('proxies.txt')
+    use_proxy = input(Fore.LIGHTYELLOW_EX + "Do you want to use a proxy? (y/n): ").strip().lower() == 'y'
+    
+    all_proxies = load_proxies('proxies.txt') if use_proxy else []
     
     if mode_choice == '1':
         print(Fore.LIGHTYELLOW_EX + "Alright, we here! Insert your nodepay token that you got from the tutorial.\n")
@@ -323,8 +325,16 @@ async def main():
         exit()
 
 async def single_account_mode(token, all_proxies):
+    # Use the first 3 valid proxies if available, otherwise proceed without proxies
     active_proxies = [
         proxy for proxy in all_proxies if is_valid_proxy(proxy)][:3]
+    
+    if not active_proxies:
+        log("INFO", "No valid proxies available. Proceeding without proxies.", Fore.LIGHTYELLOW_EX)
+        # Directly call render_profile_info without proxies
+        await render_profile_info(None, token)
+        return
+
     tasks = {asyncio.create_task(render_profile_info(
         proxy, token)): proxy for proxy in active_proxies}
 
