@@ -36,7 +36,7 @@ Now this script support Windows without [WSL](https://learn.microsoft.com/en-us/
 - Download this script Manually: [Nodepay Automate](https://github.com/im-hanzou/nodepay-automate/archive/refs/heads/main.zip)
 - If you want to use Git, Please download Git first: [Git Windows](https://github.com/git-for-windows/git/releases/download/v2.47.1.windows.1/Git-2.47.1-64-bit.exe), Then run in cmd:
 ```bash
-git clone https://github.com/im-hanzou/nodepay-automate
+git clone https://github.com/aguswirayasa/nodepay-automate
 ```
 - Make sure you are in this script directory: ``cd nodepay-automate``
 - Installing requirements:
