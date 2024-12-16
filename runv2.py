@@ -188,7 +188,7 @@ async def ping(proxy, token, account_info):
             real_ip = await get_real_ip(proxy) if proxy else "N/A"
             log("INFO", 
                 f"Account: {Fore.LIGHTGREEN_EX}{account_info.get('email', 'N/A')}{Style.RESET_ALL} | " + 
-                f"Browser ID: {Fore.LIGHTMAGENTA_EX}{proxy_browser_ids.get(proxy, 'N/A')}{Style.RESET_ALL} | " +
+                f"Browser ID: {Fore.LIGHTMAGENTA_EX}{proxy_browser_ids.get(proxy, 'N/A')}{Style.RESET_ALL} | " + 
                 f"IP: {Fore.LIGHTYELLOW_EX}{real_ip}{Style.RESET_ALL} | " + 
                 f"IP Score: {Fore.LIGHTRED_EX}{ip_score}{Style.RESET_ALL}", 
                 Fore.LIGHTCYAN_EX)
@@ -238,17 +238,20 @@ def is_valid_proxy(proxy):
 def remove_proxy_from_list(proxy):
     pass  
 
-async def multi_account_mode(all_tokens, all_proxies):
-    valid_proxies = [proxy for proxy in all_proxies if is_valid_proxy(proxy)]
+async def multi_account_mode(all_tokens, all_proxies, use_proxy):
+    valid_proxies = [proxy for proxy in all_proxies if is_valid_proxy(proxy)] if use_proxy else []
     
     token_tasks = []
     
     for index, token in enumerate(all_tokens, 1):
-        start_proxy = ((index - 1) * 3)
-        end_proxy = start_proxy + 3
-        token_proxies = valid_proxies[start_proxy:end_proxy]
+        if use_proxy:
+            start_proxy = ((index - 1) * 3)
+            end_proxy = start_proxy + 3
+            token_proxies = valid_proxies[start_proxy:end_proxy]
+        else:
+            token_proxies = []  # No proxies if not using them
         
-        if not token_proxies:
+        if not token_proxies and use_proxy:
             log("WARNING", f"No proxies available for Token {index}", Fore.LIGHTYELLOW_EX)
             continue
         
@@ -314,7 +317,7 @@ async def main():
                 log("ERROR", "No tokens found in tokens.txt", Fore.LIGHTRED_EX)
                 exit()
             
-            await multi_account_mode(all_tokens, all_proxies)
+            await multi_account_mode(all_tokens, all_proxies, use_proxy)
         
         except FileNotFoundError:
             log("ERROR", "tokens.txt not found. Please create the file with tokens.", Fore.LIGHTRED_EX)
