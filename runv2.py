@@ -188,7 +188,7 @@ async def ping(proxy, token, account_info):
             real_ip = await get_real_ip(proxy) if proxy else "N/A"
             log("INFO", 
                 f"Account: {Fore.LIGHTGREEN_EX}{account_info.get('email', 'N/A')}{Style.RESET_ALL} | " + 
-                f"Browser ID: {Fore.LIGHTMAGENTA_EX}{proxy_browser_ids.get(proxy, 'N/A')}{Style.RESET_ALL} | " + 
+                f"Browser ID: {Fore.LIGHTMAGENTA_EX}{proxy_browser_ids.get(proxy, 'N/A')}{Style.RESET_ALL} | " +
                 f"IP: {Fore.LIGHTYELLOW_EX}{real_ip}{Style.RESET_ALL} | " + 
                 f"IP Score: {Fore.LIGHTRED_EX}{ip_score}{Style.RESET_ALL}", 
                 Fore.LIGHTCYAN_EX)
@@ -257,6 +257,7 @@ async def multi_account_mode(all_tokens, all_proxies, use_proxy):
         
         log("INFO", f"Token {index} with Proxies: {token_proxies}", Fore.LIGHTBLUE_EX)
         
+        # Always process the token, even if no proxies are available
         task = asyncio.create_task(process_token(token, token_proxies))
         token_tasks.append(task)
     
@@ -267,25 +268,30 @@ async def process_token(token, proxies):
     tasks = {asyncio.create_task(render_profile_info(
         proxy, token)): proxy for proxy in proxies}
 
+    if not tasks:  # If no proxies, still call render_profile_info directly
+        await render_profile_info(None, token)  # Call without proxy
+
     while tasks:
         done, pending = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
         for task in done:
             failed_proxy = tasks[task]
             if task.result() is None:
-                log("INFO", f"Removing and replacing failed proxy for token {token[:10]}...: {failed_proxy}", Fore.LIGHTYELLOW_EX)
+                log("INFO", f"Removing and replacing failed proxy: {failed_proxy}", Fore.LIGHTYELLOW_EX)
                 proxies.remove(failed_proxy)
+                if all_proxies:
+                    new_proxy = all_proxies.pop(0)
+                    if is_valid_proxy(new_proxy):
+                        active_proxies.append(new_proxy)
+                        new_task = asyncio.create_task(
+                            render_profile_info(new_proxy, token))
+                        tasks[new_task] = new_proxy
             tasks.pop(task)
 
         for proxy in set(proxies) - set(tasks.values()):
             new_task = asyncio.create_task(
                 render_profile_info(proxy, token))
             tasks[new_task] = proxy
-        
-        if not tasks:
-            break
-        
         await asyncio.sleep(3)
-    
     await asyncio.sleep(10)
 
 async def main():
